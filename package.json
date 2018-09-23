@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@babel/polyfill": "^7.0.0-rc.1",
+    "dexie": "^2.0.4",
     "vue": "^2.5.17",
     "vuetify": "^1.2.0"
   },
