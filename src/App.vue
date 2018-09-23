@@ -12,6 +12,7 @@
                                             v-model="item.value"
                                             :readonly="!item.isEditing"
                                             @click="switchInput(item)"
+                                            @blur="updateItem(item)"
                                             >
                                         </v-text-field>
                                     </v-flex>
@@ -48,12 +49,33 @@ export default {
                 isEditing: false,
             };
         },
+        itemToGroup (item) {
+            return {
+                id: item.id,
+                name: item.value,
+            };
+        },
         switchInput (item) {
             item.isEditing = true
         },
         fetchItems () {
+            let newItems = [];
             db.groups.orderBy('sort').each( group => {
-                this.items.push(this.groupToItem(group));
+                newItems.push(this.groupToItem(group));
+            }).then( () => {
+                this.items = newItems;
+            }).catch( error => {
+                console.log(error);
+            });
+        },
+        updateItem (item) {
+            let group = this.itemToGroup(item);
+            db.groups.update(group.id, group).then( updated => {
+                if (updated) {
+                    this.fetchItems();
+                } else {
+                    console.log('Error: db.groups.update()');
+                }
             }).catch( error => {
                 console.log(error);
             });
