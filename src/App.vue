@@ -4,6 +4,27 @@
             <v-layout>
                 <v-flex>
                     <v-list class="blue" dark>
+                        <v-list-tile>
+                            <v-list-tile-content>
+                                <v-flex row>
+                                    <v-btn fab flat small @click="showNewInput = true">
+                                        <v-icon>add</v-icon>
+                                    </v-btn>
+                                </v-flex>
+                            </v-list-tile-content>
+                        </v-list-tile>
+                        <v-list-tile v-if="showNewInput">
+                            <v-list-tile-content>
+                                <v-flex style="width:100%">
+                                    <v-text-field
+                                        v-model="newValue"
+                                        placeholder="New Item"
+                                        @blur="saveNewItem"
+                                        >
+                                    </v-text-field>
+                                </v-flex>
+                            </v-list-tile-content>
+                        </v-list-tile>
                         <template v-for="(item, idx) in items">
                             <v-list-tile :key="idx">
                                 <v-list-tile-content>
@@ -36,6 +57,8 @@ export default {
     data () {
         return {
             items: [],
+            showNewInput: false,
+            newValue: '',
         }
     },
     mounted () {
@@ -76,6 +99,27 @@ export default {
                 } else {
                     console.log('Error: db.groups.update()');
                 }
+            }).catch( error => {
+                console.log(error);
+            });
+        },
+        clearNewInput () {
+            this.showNewInput = false;
+            this.newValue = '';
+        },
+        saveNewItem () {
+            if (!this.newValue) {
+                this.clearNewInput();
+                return;
+            }
+            let item = {
+                name: this.newValue,
+                sort: this.items.length + 1,
+                deleted: false,
+            };
+            db.groups.add(item).then( () => {
+                this.clearNewInput();
+                this.fetchItems();
             }).catch( error => {
                 console.log(error);
             });
