@@ -7,6 +7,9 @@
                         <v-list-tile>
                             <v-list-tile-content>
                                 <v-flex row>
+                                    <v-btn fab flat small @click="switchGroups" v-if="!showGroups">
+                                        <v-icon>arrow_back</v-icon>
+                                    </v-btn>
                                     <v-btn fab flat small @click="showNewInput = true">
                                         <v-icon>add</v-icon>
                                     </v-btn>
@@ -19,7 +22,7 @@
                                     <v-text-field
                                         v-model="newValue"
                                         placeholder="New Item"
-                                        @blur="saveNewItem"
+                                        @blur="addItem"
                                         >
                                     </v-text-field>
                                 </v-flex>
@@ -35,6 +38,9 @@
                                             @click="switchInput(item)"
                                             @blur="updateItem(item)"
                                             >
+                                            <v-card flat slot="append-outer" v-if="item.isGroup" class="blue">
+                                                <v-icon class="mt-2 mb-0" @click="switchTasks(item.id)">arrow_forward</v-icon>
+                                            </v-card>
                                         </v-text-field>
                                     </v-flex>
                                 </v-list-tile-content>
@@ -57,18 +63,21 @@ export default {
     data () {
         return {
             items: [],
+            showGroups: true,
             showNewInput: false,
             newValue: '',
+            selectedGroupId: null,
         }
     },
     mounted () {
-        this.fetchItems();
+        this.fetchGroups();
     },
     methods: {
         groupToItem (group) {
             return {
                 id: group.id,
                 value: group.name,
+                isGroup: true,
                 isEditing: false,
             };
         },
@@ -78,15 +87,43 @@ export default {
                 name: item.value,
             };
         },
+        taskToItem (task) {
+            return {
+                id: task.id,
+                value: task.text,
+                isGroup: false,
+                isEditing: false,
+            };
+        },
+        itemToTask (item) {
+            return {
+                id: item.id,
+                text: item.value,
+            };
+        },
+        switchGroups () {
+            this.showGroups = true;
+            this.selectedGroupId = null;
+            this.fetchGroups();
+        },
+        switchTasks (id) {
+            this.showGroups = false;
+            this.selectedGroupId = id;
+            this.fetchTasks(id);
+        },
         switchInput (item) {
             item.isEditing = true
         },
-        fetchItems () {
-            let newItems = [];
-            db.groups.orderBy('sort').each( group => {
-                newItems.push(this.groupToItem(group));
-            }).then( () => {
-                this.items = newItems;
+        fetchGroups () {
+            db.groups.reverse().sortBy('sort').then( groups => {
+                this.items = groups.map( group => { return this.groupToItem(group); } );
+            }).catch( error => {
+                console.log(error);
+            });
+        },
+        fetchTasks (id) {
+            db.tasks.where('groups_id').equals(id).reverse().sortBy('sort').then( tasks => {
+                this.items = tasks.map( task => { return this.taskToItem(task); } );
             }).catch( error => {
                 console.log(error);
             });
@@ -95,7 +132,7 @@ export default {
             let group = this.itemToGroup(item);
             db.groups.update(group.id, group).then( updated => {
                 if (updated) {
-                    this.fetchItems();
+                    this.fetchGroups();
                 } else {
                     console.log('Error: db.groups.update()');
                 }
@@ -107,22 +144,43 @@ export default {
             this.showNewInput = false;
             this.newValue = '';
         },
-        saveNewItem () {
-            if (!this.newValue) {
-                this.clearNewInput();
-                return;
-            }
-            let item = {
+        addGroup () {
+            let group = {
                 name: this.newValue,
                 sort: this.items.length + 1,
                 deleted: false,
             };
-            db.groups.add(item).then( () => {
+            db.groups.add(group).then( () => {
                 this.clearNewInput();
-                this.fetchItems();
+                this.fetchGroups();
             }).catch( error => {
                 console.log(error);
             });
+        },
+        addTask () {
+            let task = {
+                groups_id: this.selectedGroupId,
+                text: this.newValue,
+                sort: this.items.length + 1,
+                deleted: false,
+            };
+            db.tasks.add(task).then( () => {
+                this.clearNewInput();
+                this.fetchTasks(this.selectedGroupId);
+            }).catch( error => {
+                console.log(error);
+            });
+        },
+        addItem () {
+            if (!this.newValue) {
+                this.clearNewInput();
+                return;
+            }
+            if (!this.showGroups && this.selectedGroupId) {
+                this.addTask();
+            } else {
+                this.addGroup();
+            }
         },
     }
 }
