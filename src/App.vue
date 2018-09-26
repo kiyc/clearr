@@ -91,6 +91,7 @@ export default {
             return {
                 id: task.id,
                 value: task.text,
+                groupsId: task.groups_id,
                 isGroup: false,
                 isEditing: false,
             };
@@ -99,6 +100,7 @@ export default {
             return {
                 id: item.id,
                 text: item.value,
+                groups_id: item.groupsId,
             };
         },
         switchGroups () {
@@ -128,7 +130,7 @@ export default {
                 console.log(error);
             });
         },
-        updateItem (item) {
+        updateGroup (item) {
             let group = this.itemToGroup(item);
             db.groups.update(group.id, group).then( updated => {
                 if (updated) {
@@ -139,6 +141,25 @@ export default {
             }).catch( error => {
                 console.log(error);
             });
+        },
+        updateTask (item) {
+            let task = this.itemToTask(item);
+            db.tasks.update(task.id, task).then( updated => {
+                if (updated) {
+                    this.fetchTasks(task.groups_id);
+                } else {
+                    console.log('Error: db.groups.update()');
+                }
+            }).catch( error => {
+                console.log(error);
+            });
+        },
+        updateItem (item) {
+            if (!this.showGroups && this.selectedGroupId) {
+                this.updateTask(item);
+            } else {
+                this.updateGroup(item);
+            }
         },
         clearNewInput () {
             this.showNewInput = false;
