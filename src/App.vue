@@ -38,6 +38,9 @@
                                             @click="switchInput(item)"
                                             @blur="updateItem(item)"
                                             >
+                                            <v-card flat slot="append-outer" class="blue">
+                                                <v-icon class="mt-2 mb-0" @click="removeItem(item)">clear</v-icon>
+                                            </v-card>
                                             <v-card flat slot="append-outer" v-if="item.isGroup" class="blue">
                                                 <v-icon class="mt-2 mb-0" @click="switchTasks(item.id)">arrow_forward</v-icon>
                                             </v-card>
@@ -77,6 +80,7 @@ export default {
             return {
                 id: group.id,
                 value: group.name,
+                sort: group.sort,
                 isGroup: true,
                 isEditing: false,
             };
@@ -85,12 +89,14 @@ export default {
             return {
                 id: item.id,
                 name: item.value,
+                sort: item.sort,
             };
         },
         taskToItem (task) {
             return {
                 id: task.id,
                 value: task.text,
+                sort: task.sort,
                 groupsId: task.groups_id,
                 isGroup: false,
                 isEditing: false,
@@ -100,6 +106,7 @@ export default {
             return {
                 id: item.id,
                 text: item.value,
+                sort: item.sort,
                 groups_id: item.groupsId,
             };
         },
@@ -117,14 +124,14 @@ export default {
             item.isEditing = true
         },
         fetchGroups () {
-            db.groups.reverse().sortBy('sort').then( groups => {
+            db.groups.where('deleted').equals(0).reverse().sortBy('sort').then( groups => {
                 this.items = groups.map( group => { return this.groupToItem(group); } );
             }).catch( error => {
                 console.log(error);
             });
         },
         fetchTasks (id) {
-            db.tasks.where('groups_id').equals(id).reverse().sortBy('sort').then( tasks => {
+            db.tasks.where({ deleted: 0, groups_id: id }).reverse().sortBy('sort').then( tasks => {
                 this.items = tasks.map( task => { return this.taskToItem(task); } );
             }).catch( error => {
                 console.log(error);
@@ -169,7 +176,7 @@ export default {
             let group = {
                 name: this.newValue,
                 sort: this.items.length + 1,
-                deleted: false,
+                deleted: 0,
             };
             db.groups.add(group).then( () => {
                 this.clearNewInput();
@@ -183,7 +190,7 @@ export default {
                 groups_id: this.selectedGroupId,
                 text: this.newValue,
                 sort: this.items.length + 1,
-                deleted: false,
+                deleted: 0,
             };
             db.tasks.add(task).then( () => {
                 this.clearNewInput();
@@ -201,6 +208,43 @@ export default {
                 this.addTask();
             } else {
                 this.addGroup();
+            }
+        },
+        removeGroup (item) {
+            let group = this.itemToGroup(item);
+            group.deleted = 1;
+            db.transaction('rw', db.groups, () => {
+                db.groups.update(group.id, group);
+                db.groups.where('sort').above(group.sort).each( grp => {
+                    db.groups.update(grp.id, { sort: grp.sort - 1 });
+                });
+            }).then( () => {
+                this.fetchGroups();
+            }).catch( error => {
+                console.log(error);
+            });
+        },
+        removeTask (item) {
+            let task = this.itemToTask(item);
+            task.deleted = 1;
+            db.transaction('rw', db.tasks, () => {
+                db.tasks.update(task.id, task);
+                db.tasks.where('groups_id').equals(task.groups_id).filter( tsk => {
+                    return tsk.sort > task.sort;
+                }).each( tsk => {
+                    db.tasks.update(tsk.id, { sort: tsk.sort - 1 });
+                });
+            }).then( () => {
+                this.fetchTasks(task.groups_id);
+            }).catch( error => {
+                console.log(error);
+            });
+        },
+        removeItem (item) {
+            if (!this.showGroups && this.selectedGroupId) {
+                this.removeTask(item);
+            } else {
+                this.removeGroup(item);
             }
         },
     }
