@@ -33,18 +33,17 @@
                                 <v-list-tile-content>
                                     <v-flex style="width:100%">
                                         <v-text-field
+                                            v-if="item.isEditing"
                                             v-model="item.value"
-                                            :readonly="!item.isEditing"
-                                            @click="switchInput(item)"
+                                            ref="textfield"
                                             @blur="updateItem(item)"
                                             >
-                                            <v-card flat slot="append-outer" class="blue">
-                                                <v-icon class="mt-2 mb-0" @click="removeItem(item)">clear</v-icon>
-                                            </v-card>
-                                            <v-card flat slot="append-outer" v-if="item.isGroup" class="blue">
-                                                <v-icon class="mt-2 mb-0" @click="switchTasks(item.id)">arrow_forward</v-icon>
-                                            </v-card>
                                         </v-text-field>
+                                        <v-card class="blue" dark v-else>
+                                            <v-card-text class="px-0 pb-2">
+                                                <span @click="switchInput(item)">{{ item.value }}</span>
+                                            </v-card-text>
+                                        </v-card>
                                     </v-flex>
                                 </v-list-tile-content>
                             </v-list-tile>
@@ -121,7 +120,8 @@ export default {
             this.fetchTasks(id);
         },
         switchInput (item) {
-            item.isEditing = true
+            item.isEditing = true;
+            this.$nextTick( () => this.$refs.textfield[0].focus() );
         },
         fetchGroups () {
             db.groups.where('deleted').equals(0).reverse().sortBy('sort').then( groups => {
@@ -141,6 +141,7 @@ export default {
             let group = this.itemToGroup(item);
             db.groups.update(group.id, group).then( updated => {
                 if (updated) {
+                    item.isEditing = false;
                     this.fetchGroups();
                 } else {
                     console.log('Error: db.groups.update()');
@@ -153,6 +154,7 @@ export default {
             let task = this.itemToTask(item);
             db.tasks.update(task.id, task).then( updated => {
                 if (updated) {
+                    item.isEditing = false;
                     this.fetchTasks(task.groups_id);
                 } else {
                     console.log('Error: db.groups.update()');
