@@ -3,7 +3,7 @@
         <v-content>
             <v-layout>
                 <v-flex>
-                    <v-list class="blue" dark>
+                    <v-list class="yellow lighten-2" dark style="padding:0">
                         <v-list-tile>
                             <v-list-tile-content>
                                 <v-flex row>
@@ -29,7 +29,7 @@
                             </v-list-tile-content>
                         </v-list-tile>
                         <template v-for="(item, idx) in items">
-                            <v-list-tile :key="idx">
+                            <v-list-tile :key="idx" v-listtouch="item" class="blue">
                                 <v-list-tile-content>
                                     <v-flex style="width:100%">
                                         <v-text-field
@@ -73,6 +73,47 @@ export default {
     },
     mounted () {
         this.fetchGroups();
+    },
+    directives: {
+        listtouch: {
+            inserted: (el, binding, vnode) => {
+                let touchPosition = {
+                    startX: null,
+                    startY: null,
+                    currentX: null,
+                    currentY: null,
+                };
+                let halfWidth = parseInt(window.innerWidth / 2);
+                el.addEventListener('touchstart', event => {
+                    if (event.targetTouches.length == 1) {
+                        let touch = event.targetTouches[0];
+                        touchPosition.startX = touch.pageX;
+                        touchPosition.startY = touch.pageY;
+                    }
+                });
+                el.addEventListener('touchmove', event => {
+                    if (event.targetTouches.length == 1) {
+                        let touch = event.targetTouches[0];
+                        touchPosition.currentX = touch.pageX;
+                        touchPosition.currentY = touch.pageY;
+                        if (touchPosition.currentX < touchPosition.startX) {
+                            el.style['margin-left'] = '0px';
+                            el.style['margin-right'] = parseInt(touchPosition.startX - touchPosition.currentX) + 'px';
+                        } else {
+                            el.style['margin-left'] = parseInt(touchPosition.currentX - touchPosition.startX) + 'px';
+                            el.style['margin-right'] = '0px';
+                        }
+                    }
+                });
+                el.addEventListener('touchend', () => {
+                    el.style['margin-left'] = '0px';
+                    el.style['margin-right'] = '0px';
+                    if (touchPosition.currentX < touchPosition.startX && touchPosition.startX - touchPosition.currentX > halfWidth) {
+                        return vnode.context.removeGroup(binding.value);
+                    }
+                });
+            }
+        }
     },
     methods: {
         groupToItem (group) {
@@ -124,6 +165,7 @@ export default {
             this.$nextTick( () => this.$refs.textfield[0].focus() );
         },
         fetchGroups () {
+            this.items = []; // All clear necessary for remove item
             db.groups.where('deleted').equals(0).reverse().sortBy('sort').then( groups => {
                 this.items = groups.map( group => { return this.groupToItem(group); } );
             }).catch( error => {
