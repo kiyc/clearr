@@ -1,27 +1,16 @@
 <template>
-    <v-app class="blue" dark>
-        <v-content>
+    <v-app class="blue">
+        <v-content id="content" v-windowtouch>
             <v-layout>
                 <v-flex>
-                    <v-list class="yellow lighten-2" dark style="padding:0">
-                        <v-list-tile>
-                            <v-list-tile-content>
-                                <v-flex row>
-                                    <v-btn fab flat small @click="switchGroups" v-if="!showGroups">
-                                        <v-icon>arrow_back</v-icon>
-                                    </v-btn>
-                                    <v-btn fab flat small @click="showNewInput = true">
-                                        <v-icon>add</v-icon>
-                                    </v-btn>
-                                </v-flex>
-                            </v-list-tile-content>
-                        </v-list-tile>
-                        <v-list-tile v-if="showNewInput">
+                    <v-list class="yellow lighten-2" style="padding:0">
+                        <v-list-tile style="margin-top:-48px">
                             <v-list-tile-content>
                                 <v-flex style="width:100%">
                                     <v-text-field
                                         v-model="newValue"
                                         placeholder="New Item"
+                                        ref="newTextfield"
                                         @blur="addItem"
                                         >
                                     </v-text-field>
@@ -29,7 +18,7 @@
                             </v-list-tile-content>
                         </v-list-tile>
                         <template v-for="(item, idx) in items">
-                            <v-list-tile :key="idx" v-listtouch="item" class="blue">
+                            <v-list-tile :key="idx" v-listtouch="item" class="blue" dark>
                                 <v-list-tile-content>
                                     <v-flex style="width:100%">
                                         <v-text-field
@@ -84,6 +73,7 @@ export default {
                     currentY: null,
                 };
                 let halfWidth = parseInt(window.innerWidth / 2);
+                let thresholdHeight = 30;
                 el.addEventListener('touchstart', event => {
                     if (event.targetTouches.length == 1) {
                         let touch = event.targetTouches[0];
@@ -96,12 +86,14 @@ export default {
                         let touch = event.targetTouches[0];
                         touchPosition.currentX = touch.pageX;
                         touchPosition.currentY = touch.pageY;
-                        if (touchPosition.currentX < touchPosition.startX) {
-                            el.style['margin-left'] = '0px';
-                            el.style['margin-right'] = parseInt(touchPosition.startX - touchPosition.currentX) + 'px';
-                        } else {
-                            el.style['margin-left'] = parseInt(touchPosition.currentX - touchPosition.startX) + 'px';
-                            el.style['margin-right'] = '0px';
+                        if (Math.abs(touchPosition.currentY - touchPosition.startY) < thresholdHeight) {
+                            if (touchPosition.currentX < touchPosition.startX) {
+                                el.style['margin-left'] = '0px';
+                                el.style['margin-right'] = parseInt(touchPosition.startX - touchPosition.currentX) + 'px';
+                            } else {
+                                el.style['margin-left'] = parseInt(touchPosition.currentX - touchPosition.startX) + 'px';
+                                el.style['margin-right'] = '0px';
+                            }
                         }
                     }
                 });
@@ -110,9 +102,57 @@ export default {
                     el.style['margin-right'] = '0px';
                     // Remove item
                     if (touchPosition.currentX < touchPosition.startX && touchPosition.startX - touchPosition.currentX > halfWidth
-                        && Math.abs(touchPosition.currentY - touchPosition.startY) < 30) {
+                        && Math.abs(touchPosition.currentY - touchPosition.startY) < thresholdHeight) {
                         return vnode.context.removeItem(binding.value);
                     }
+                });
+            }
+        },
+        windowtouch: {
+            inserted: (el, binding, vnode) => {
+                let touchPosition = {
+                    startX: null,
+                    startY: null,
+                    currentX: null,
+                    currentY: null,
+                };
+                let thresholdWidth = 50;
+                el.addEventListener('touchstart', event => {
+                    if (event.targetTouches.length == 1) {
+                        let touch = event.targetTouches[0];
+                        touchPosition.startX = touch.pageX;
+                        touchPosition.startY = touch.pageY;
+                    }
+                });
+                el.addEventListener('touchmove', event => {
+                    if (event.targetTouches.length == 1) {
+                        let touch = event.targetTouches[0];
+                        touchPosition.currentX = touch.pageX;
+                        touchPosition.currentY = touch.pageY;
+                        if (Math.abs(touchPosition.currentX - touchPosition.startX) < thresholdWidth) {
+                            if (touchPosition.currentY > touchPosition.startY) {
+                                let paddingTop = parseInt(touchPosition.currentY - touchPosition.startY);
+                                if (paddingTop > 48) {
+                                    paddingTop = 48;
+                                }
+                                el.style['padding-top'] = paddingTop + 'px';
+                            }
+                        }
+                    }
+                });
+                el.addEventListener('touchend', () => {
+                    // Display new item input
+                    if (Math.abs(touchPosition.currentX - touchPosition.startX) < thresholdWidth) {
+                        if (touchPosition.currentY > touchPosition.startY) {
+                            let paddingTop = parseInt(touchPosition.currentY - touchPosition.startY);
+                            if (paddingTop > 48) {
+                                paddingTop = 48;
+                                el.style['padding-top'] = paddingTop + 'px';
+                                return vnode.context.focusNewTextfield();
+                            }
+                        }
+                    }
+                    el.style['padding-top'] = '0px';
                 });
             }
         }
@@ -161,6 +201,9 @@ export default {
             this.showGroups = false;
             this.selectedGroupId = id;
             this.fetchTasks(id);
+        },
+        focusNewTextfield () {
+            this.$refs.newTextfield.focus();
         },
         switchInput (item) {
             item.isEditing = true;
@@ -215,7 +258,8 @@ export default {
             }
         },
         clearNewInput () {
-            this.showNewInput = false;
+            let el = document.getElementById('content');
+            el.style['padding-top'] = 0;
             this.newValue = '';
         },
         addGroup () {
