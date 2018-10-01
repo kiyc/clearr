@@ -108,7 +108,8 @@ export default {
                 el.addEventListener('touchend', () => {
                     el.style['margin-left'] = '0px';
                     el.style['margin-right'] = '0px';
-                    if (touchPosition.currentX < touchPosition.startX && touchPosition.startX - touchPosition.currentX > halfWidth) {
+                    if (touchPosition.currentX < touchPosition.startX && touchPosition.startX - touchPosition.currentX > halfWidth
+                        && Math.abs(touchPosition.currentY - touchPosition.startY) < 30) {
                         return vnode.context.removeGroup(binding.value);
                     }
                 });
