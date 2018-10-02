@@ -462,8 +462,9 @@ export default {
             }
             db.delete().then( () => {
                 alert('Reset Data');
+                location.reload();
             }).catch( error => {
-                console.log(error);
+                alert('Error');
             });
         },
     }
