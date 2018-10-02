@@ -18,7 +18,12 @@
                             </v-list-tile-content>
                         </v-list-tile>
                         <template v-for="(item, idx) in items">
-                            <v-list-tile :key="idx" v-listtouch="item" class="blue" dark>
+                            <v-list-tile
+                                :key="idx"
+                                v-listtouch="item"
+                                class="blue" dark
+                                @click="switchTasks(item.id)"
+                                >
                                 <v-list-tile-content>
                                     <v-flex style="width:100%">
                                         <v-text-field
@@ -30,7 +35,7 @@
                                         </v-text-field>
                                         <v-card class="blue" dark v-else>
                                             <v-card-text class="px-0 pb-2">
-                                                <span @click="switchInput(item)">{{ item.value }}</span>
+                                                <span @click.stop="switchInput(item)">{{ item.value }}</span>
                                             </v-card-text>
                                         </v-card>
                                     </v-flex>
@@ -55,7 +60,7 @@ export default {
         return {
             items: [],
             showGroups: true,
-            showNewInput: false,
+            preventFlg: false,
             newValue: '',
             selectedGroupId: null,
         }
@@ -132,8 +137,8 @@ export default {
                         if (Math.abs(touchPosition.currentX - touchPosition.startX) < thresholdWidth) {
                             if (touchPosition.currentY > touchPosition.startY) {
                                 let paddingTop = parseInt(touchPosition.currentY - touchPosition.startY);
-                                if (paddingTop > 48) {
-                                    paddingTop = 48;
+                                if (paddingTop > 100) {
+                                    paddingTop = 100;
                                 }
                                 el.style['padding-top'] = paddingTop + 'px';
                             }
@@ -145,11 +150,7 @@ export default {
                     if (Math.abs(touchPosition.currentX - touchPosition.startX) < thresholdWidth) {
                         if (touchPosition.currentY > touchPosition.startY) {
                             let paddingTop = parseInt(touchPosition.currentY - touchPosition.startY);
-                            if (paddingTop > 48) {
-                                paddingTop = 48;
-                                el.style['padding-top'] = paddingTop + 'px';
-                                return vnode.context.focusNewTextfield();
-                            }
+                            return vnode.context.windowTouchendEvent(paddingTop);
                         }
                     }
                     el.style['padding-top'] = '0px';
@@ -193,19 +194,33 @@ export default {
             };
         },
         switchGroups () {
+            if (this.showGroups) {
+                return;
+            }
+            this.resetWindow();
             this.showGroups = true;
             this.selectedGroupId = null;
             this.fetchGroups();
         },
         switchTasks (id) {
+            if (this.preventFlg) {
+                this.preventFlg = false;
+                return;
+            }
             this.showGroups = false;
             this.selectedGroupId = id;
             this.fetchTasks(id);
         },
         focusNewTextfield () {
+            let el = document.getElementById('content');
+            el.style['padding-top'] = '48px';
             this.$refs.newTextfield.focus();
         },
         switchInput (item) {
+            if (this.preventFlg) {
+                this.preventFlg = false;
+                return;
+            }
             item.isEditing = true;
             this.$nextTick( () => this.$refs.textfield[0].focus() );
         },
@@ -218,6 +233,7 @@ export default {
             });
         },
         fetchTasks (id) {
+            this.items = []; // All clear necessary for remove item
             db.tasks.where({ deleted: 0, groups_id: id }).reverse().sortBy('sort').then( tasks => {
                 this.items = tasks.map( task => { return this.taskToItem(task); } );
             }).catch( error => {
@@ -226,38 +242,31 @@ export default {
         },
         updateGroup (item) {
             let group = this.itemToGroup(item);
-            db.groups.update(group.id, group).then( updated => {
-                if (updated) {
-                    item.isEditing = false;
-                    this.fetchGroups();
-                } else {
-                    console.log('Error: db.groups.update()');
-                }
+            db.groups.update(group.id, group).then( () => {
+                item.isEditing = false;
+                this.fetchGroups();
             }).catch( error => {
                 console.log(error);
             });
         },
         updateTask (item) {
             let task = this.itemToTask(item);
-            db.tasks.update(task.id, task).then( updated => {
-                if (updated) {
-                    item.isEditing = false;
-                    this.fetchTasks(task.groups_id);
-                } else {
-                    console.log('Error: db.groups.update()');
-                }
+            db.tasks.update(task.id, task).then( () => {
+                item.isEditing = false;
+                this.fetchTasks(task.groups_id);
             }).catch( error => {
                 console.log(error);
             });
         },
         updateItem (item) {
+            this.preventFlg = true;
             if (!this.showGroups && this.selectedGroupId) {
                 this.updateTask(item);
             } else {
                 this.updateGroup(item);
             }
         },
-        clearNewInput () {
+        resetWindow () {
             let el = document.getElementById('content');
             el.style['padding-top'] = 0;
             this.newValue = '';
@@ -269,7 +278,7 @@ export default {
                 deleted: 0,
             };
             db.groups.add(group).then( () => {
-                this.clearNewInput();
+                this.resetWindow();
                 this.fetchGroups();
             }).catch( error => {
                 console.log(error);
@@ -283,15 +292,16 @@ export default {
                 deleted: 0,
             };
             db.tasks.add(task).then( () => {
-                this.clearNewInput();
+                this.resetWindow();
                 this.fetchTasks(this.selectedGroupId);
             }).catch( error => {
                 console.log(error);
             });
         },
         addItem () {
+            this.preventFlg = true;
             if (!this.newValue) {
-                this.clearNewInput();
+                this.resetWindow();
                 return;
             }
             if (!this.showGroups && this.selectedGroupId) {
@@ -337,6 +347,29 @@ export default {
                 this.removeGroup(item);
             }
         },
+        windowTouchendEvent (paddingTop) {
+            if (!this.showGroups && this.selectedGroupId) {
+                if (paddingTop > 200) {
+                    this.switchGroups();
+                } else if (paddingTop > 48) {
+                    this.focusNewTextfield();
+                } else {
+                    this.resetWindow();
+                }
+            } else {
+                if (paddingTop > 48) {
+                    this.focusNewTextfield();
+                } else {
+                    this.resetWindow();
+                }
+            }
+        },
     }
 }
 </script>
+
+<style>
+.theme--light.v-list .v-list__tile--link:hover {
+    background: none;
+}
+</style>
