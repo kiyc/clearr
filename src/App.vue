@@ -3,8 +3,20 @@
         <v-content id="content" v-windowtouch>
             <v-layout>
                 <v-flex>
-                    <v-list class="yellow lighten-2" style="padding:0">
-                        <v-list-tile style="margin-top:-48px">
+                    <v-list v-if="!showSettings" class="yellow lighten-2" style="padding:0">
+                        <v-list-tile style="margin-top:-96px">
+                            <v-list-tile-content>
+                                <v-flex style="width:100%">
+                                    <v-card class="yellow lighten-2">
+                                        <v-card-text class="px-0 pb-2">
+                                            <span v-if="showGroups">Move to Settings</span>
+                                            <span v-else>Back to Groups</span>
+                                        </v-card-text>
+                                    </v-card>
+                                </v-flex>
+                            </v-list-tile-content>
+                        </v-list-tile>
+                        <v-list-tile>
                             <v-list-tile-content>
                                 <v-flex style="width:100%">
                                     <v-text-field
@@ -43,6 +55,30 @@
                             </v-list-tile>
                         </template>
                     </v-list>
+                    <v-list v-else id="settings" class="blue-grey" dark style="padding:0">
+                        <v-list-tile style="margin-top:-48px">
+                            <v-list-tile-content>
+                                <v-flex style="width:100%">
+                                    <v-card class="blue-grey">
+                                        <v-card-text class="px-0 pb-2">
+                                            <span>Back to Groups</span>
+                                        </v-card-text>
+                                    </v-card>
+                                </v-flex>
+                            </v-list-tile-content>
+                        </v-list-tile>
+                        <v-list-tile>
+                            <v-list-tile-content>
+                                <v-flex style="width:100%">
+                                    <v-card class="blue-grey">
+                                        <v-card-text class="px-0 pb-2">
+                                            <span @click.stop="removeAllData">Reset Data</span>
+                                        </v-card-text>
+                                    </v-card>
+                                </v-flex>
+                            </v-list-tile-content>
+                        </v-list-tile>
+                    </v-list>
                 </v-flex>
             </v-layout>
         </v-content>
@@ -63,6 +99,7 @@ export default {
             preventFlg: false,
             newValue: '',
             selectedGroupId: null,
+            showSettings: false,
         }
     },
     mounted () {
@@ -151,9 +188,16 @@ export default {
                         touchPosition.currentY = touch.pageY;
                         if (Math.abs(touchPosition.currentX - touchPosition.startX) < thresholdWidth) {
                             if (touchPosition.currentY > touchPosition.startY) {
+                                let $settings = document.getElementById('settings');
                                 let paddingTop = parseInt(touchPosition.currentY - touchPosition.startY);
-                                if (paddingTop > 100) {
-                                    paddingTop = 100;
+                                if ($settings) {
+                                    if (paddingTop > 48) {
+                                        paddingTop = 48;
+                                    }
+                                } else {
+                                    if (paddingTop > 96) {
+                                        paddingTop = 96;
+                                    }
                                 }
                                 el.style['padding-top'] = paddingTop + 'px';
                             }
@@ -161,6 +205,7 @@ export default {
                     }
                 });
                 el.addEventListener('touchend', () => {
+                    // Move page or
                     // Display new item input
                     if (!touchPosition.startX || !touchPosition.startY || !touchPosition.currentX || !touchPosition.currentY) {
                         touchPosition.startX = null;
@@ -176,7 +221,7 @@ export default {
                             touchPosition.startY = null;
                             touchPosition.currentX = null;
                             touchPosition.currentY = null;
-                            return vnode.context.windowTouchendEvent(paddingTop);
+                            return vnode.context.windowTouchEndEvent(paddingTop);
                         }
                     }
                     el.style['padding-top'] = '0px';
@@ -229,6 +274,7 @@ export default {
             }
             this.resetWindow();
             this.showGroups = true;
+            this.showSettings = false;
             this.selectedGroupId = null;
             this.fetchGroups();
         },
@@ -243,6 +289,11 @@ export default {
             this.showGroups = false;
             this.selectedGroupId = id;
             this.fetchTasks(id);
+        },
+        switchSettings () {
+            this.resetWindow();
+            this.showSettings = true;
+            this.showGroups = false;
         },
         focusNewTextfield () {
             let el = document.getElementById('content');
@@ -380,22 +431,32 @@ export default {
                 this.removeGroup(item);
             }
         },
-        windowTouchendEvent (paddingTop) {
-            if (!this.showGroups && this.selectedGroupId) {
-                if (paddingTop > 200) {
+        windowTouchEndEvent (paddingTop) {
+            if (this.showSettings) {
+                if (paddingTop > 48) {
                     this.switchGroups();
+                } else {
+                    this.resetWindow();
+                }
+            } else if (this.showGroups && !this.selectedGroupId) {
+                if (paddingTop > 96) {
+                    this.switchSettings();
                 } else if (paddingTop > 48) {
                     this.focusNewTextfield();
                 } else {
                     this.resetWindow();
                 }
             } else {
-                if (paddingTop > 48) {
+                if (paddingTop > 96) {
+                    this.switchGroups();
+                } else if (paddingTop > 48) {
                     this.focusNewTextfield();
                 } else {
                     this.resetWindow();
                 }
             }
+        },
+        removeAllData () {
         },
     }
 }
