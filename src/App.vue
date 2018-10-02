@@ -67,12 +67,12 @@
                                 </v-flex>
                             </v-list-tile-content>
                         </v-list-tile>
-                        <v-list-tile>
+                        <v-list-tile @click.stop="removeAllData">
                             <v-list-tile-content>
                                 <v-flex style="width:100%">
                                     <v-card class="blue-grey">
                                         <v-card-text class="px-0 pb-2">
-                                            <span @click.stop="removeAllData">Reset Data</span>
+                                            <span>Reset Data</span>
                                         </v-card-text>
                                     </v-card>
                                 </v-flex>
@@ -457,13 +457,21 @@ export default {
             }
         },
         removeAllData () {
+            if (!window.confirm('Reset data OK?')) {
+                return;
+            }
+            db.delete().then( () => {
+                alert('Reset Data');
+            }).catch( error => {
+                console.log(error);
+            });
         },
     }
 }
 </script>
 
 <style>
-.theme--light.v-list .v-list__tile--link:hover {
+.theme--light.v-list .v-list__tile--link:hover, .theme--dark.v-list .v-list__tile--link:hover {
     background: none;
 }
 </style>
