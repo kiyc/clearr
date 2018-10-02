@@ -105,11 +105,26 @@ export default {
                 el.addEventListener('touchend', () => {
                     el.style['margin-left'] = '0px';
                     el.style['margin-right'] = '0px';
+                    if (!touchPosition.startX || !touchPosition.startY || !touchPosition.currentX || !touchPosition.currentY) {
+                        touchPosition.startX = null;
+                        touchPosition.startY = null;
+                        touchPosition.currentX = null;
+                        touchPosition.currentY = null;
+                        return;
+                    }
                     // Remove item
                     if (touchPosition.currentX < touchPosition.startX && touchPosition.startX - touchPosition.currentX > halfWidth
                         && Math.abs(touchPosition.currentY - touchPosition.startY) < thresholdHeight) {
+                        touchPosition.startX = null;
+                        touchPosition.startY = null;
+                        touchPosition.currentX = null;
+                        touchPosition.currentY = null;
                         return vnode.context.removeItem(binding.value);
                     }
+                    touchPosition.startX = null;
+                    touchPosition.startY = null;
+                    touchPosition.currentX = null;
+                    touchPosition.currentY = null;
                 });
             }
         },
@@ -147,13 +162,28 @@ export default {
                 });
                 el.addEventListener('touchend', () => {
                     // Display new item input
+                    if (!touchPosition.startX || !touchPosition.startY || !touchPosition.currentX || !touchPosition.currentY) {
+                        touchPosition.startX = null;
+                        touchPosition.startY = null;
+                        touchPosition.currentX = null;
+                        touchPosition.currentY = null;
+                        return;
+                    }
                     if (Math.abs(touchPosition.currentX - touchPosition.startX) < thresholdWidth) {
                         if (touchPosition.currentY > touchPosition.startY) {
                             let paddingTop = parseInt(touchPosition.currentY - touchPosition.startY);
+                            touchPosition.startX = null;
+                            touchPosition.startY = null;
+                            touchPosition.currentX = null;
+                            touchPosition.currentY = null;
                             return vnode.context.windowTouchendEvent(paddingTop);
                         }
                     }
                     el.style['padding-top'] = '0px';
+                    touchPosition.startX = null;
+                    touchPosition.startY = null;
+                    touchPosition.currentX = null;
+                    touchPosition.currentY = null;
                 });
             }
         }
@@ -203,6 +233,9 @@ export default {
             this.fetchGroups();
         },
         switchTasks (id) {
+            if (!this.showGroups && this.selectedGroupId) {
+                return;
+            }
             if (this.preventFlg) {
                 this.preventFlg = false;
                 return;
