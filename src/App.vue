@@ -464,6 +464,7 @@ export default {
                 alert('Reset Data');
                 location.reload();
             }).catch( error => {
+                console.log(error);
                 alert('Error');
             });
         },
