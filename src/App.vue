@@ -308,7 +308,7 @@ export default {
                 return;
             }
             item.isEditing = true;
-            this.$nextTick().then( () => { alert(this.$refs.textfield[0].focus()); this.$refs.textfield[0].focus();} );
+            this.$nextTick( () => { this.$refs.textfield[0].focus(); this.$refs.textfield[0].focus(); } );
         },
         fetchGroups () {
             this.items = []; // All clear necessary for remove item
