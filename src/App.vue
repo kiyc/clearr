@@ -43,6 +43,7 @@
                                                 v-model="item.value"
                                                 ref="textfield"
                                                 @blur="updateItem(item)"
+                                                autofocus="autofocus"
                                                 >
                                             </v-text-field>
                                             <v-card class="blue" dark v-else>
@@ -102,6 +103,7 @@ export default {
             newValue: '',
             selectedGroupId: null,
             showSettings: false,
+            autofocus: true,
         }
     },
     mounted () {
@@ -308,7 +310,7 @@ export default {
                 return;
             }
             item.isEditing = true;
-            this.$nextTick( () => { this.$refs.textfield[0].focus(); this.$refs.textfield[0].focus(); } );
+            //this.$nextTick( () => { this.$refs.textfield[0].focus(); this.$refs.textfield[0].focus(); } );
         },
         fetchGroups () {
             this.items = []; // All clear necessary for remove item
