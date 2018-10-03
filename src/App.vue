@@ -30,29 +30,31 @@
                             </v-list-tile-content>
                         </v-list-tile>
                         <template v-for="(item, idx) in items">
-                            <v-list-tile
-                                :key="idx"
-                                v-listtouch="item"
-                                class="blue" dark
-                                @click="switchTasks(item.id)"
-                                >
-                                <v-list-tile-content>
-                                    <v-flex style="width:100%">
-                                        <v-text-field
-                                            v-if="item.isEditing"
-                                            v-model="item.value"
-                                            ref="textfield"
-                                            @blur="updateItem(item)"
-                                            >
-                                        </v-text-field>
-                                        <v-card class="blue" dark v-else>
-                                            <v-card-text class="px-0 pb-2">
-                                                <span @click.stop="switchInput(item)">{{ item.value }}</span>
-                                            </v-card-text>
-                                        </v-card>
-                                    </v-flex>
-                                </v-list-tile-content>
-                            </v-list-tile>
+                            <div :key="idx">
+                                <v-list-tile
+                                    v-listtouch="item"
+                                    class="blue" dark
+                                    @click="switchTasks(item.id)"
+                                    >
+                                    <v-list-tile-content>
+                                        <v-flex style="width:100%">
+                                            <v-text-field
+                                                v-if="item.isEditing"
+                                                v-model="item.value"
+                                                ref="textfield"
+                                                @blur="updateItem(item)"
+                                                >
+                                            </v-text-field>
+                                            <v-card class="blue" dark v-else>
+                                                <v-card-text class="px-0 pb-2">
+                                                    <span @click.stop="switchInput(item)">{{ item.value }}</span>
+                                                </v-card-text>
+                                            </v-card>
+                                        </v-flex>
+                                    </v-list-tile-content>
+                                </v-list-tile>
+                                <v-divider class="blue darken-2"></v-divider>
+                            </div>
                         </template>
                     </v-list>
                     <v-list v-else id="settings" class="blue-grey" dark style="padding:0">
