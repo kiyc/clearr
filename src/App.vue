@@ -38,7 +38,6 @@
                                 <v-list-tile-content>
                                     <v-flex style="width:100%">
                                         <v-text-field
-                                            :readonly="!item.isEditing"
                                             v-model="item.value"
                                             @blur="updateItem(item)"
                                             @click.stop="switchInput(item)"
