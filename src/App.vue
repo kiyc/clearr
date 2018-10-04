@@ -30,32 +30,26 @@
                             </v-list-tile-content>
                         </v-list-tile>
                         <template v-for="(item, idx) in items">
-                            <div :key="idx">
-                                <v-list-tile
-                                    v-listtouch="item"
-                                    class="blue" dark
-                                    @click="switchTasks(item.id)"
-                                    >
-                                    <v-list-tile-content>
-                                        <v-flex style="width:100%">
-                                            <v-text-field
-                                                v-if="item.isEditing"
-                                                v-model="item.value"
-                                                ref="textfield"
-                                                @blur="updateItem(item)"
-                                                autofocus="autofocus"
-                                                >
-                                            </v-text-field>
-                                            <v-card class="blue" dark v-else>
-                                                <v-card-text class="px-0 pb-2">
-                                                    <span @click.stop="switchInput(item)">{{ item.value }}</span>
-                                                </v-card-text>
+                            <v-list-tile
+                                :key="idx"
+                                v-listtouch="item"
+                                class="blue" dark
+                                >
+                                <v-list-tile-content>
+                                    <v-flex style="width:100%">
+                                        <v-text-field
+                                            :readonly="!item.isEditing"
+                                            v-model="item.value"
+                                            @blur="updateItem(item)"
+                                            @click.stop="switchInput(item)"
+                                            >
+                                            <v-card flat slot="append-outer" v-if="item.isGroup" class="blue">
+                                                <v-card-text class="pt-2 pb-0 px-0" @click.stop="switchTasks(item.id)">{{ item.taskCount }}</v-card-text>
                                             </v-card>
-                                        </v-flex>
-                                    </v-list-tile-content>
-                                </v-list-tile>
-                                <v-divider class="blue darken-2"></v-divider>
-                            </div>
+                                        </v-text-field>
+                                    </v-flex>
+                                </v-list-tile-content>
+                            </v-list-tile>
                         </template>
                     </v-list>
                     <v-list v-else id="settings" class="blue-grey" dark style="padding:0">
@@ -103,7 +97,6 @@ export default {
             newValue: '',
             selectedGroupId: null,
             showSettings: false,
-            autofocus: true,
         }
     },
     mounted () {
@@ -245,6 +238,7 @@ export default {
                 sort: group.sort,
                 isGroup: true,
                 isEditing: false,
+                taskCount: 0,
             };
         },
         itemToGroup (item) {
@@ -310,12 +304,25 @@ export default {
                 return;
             }
             item.isEditing = true;
-            //this.$nextTick( () => { this.$refs.textfield[0].focus(); this.$refs.textfield[0].focus(); } );
         },
         fetchGroups () {
             this.items = []; // All clear necessary for remove item
             db.groups.where('deleted').equals(0).reverse().sortBy('sort').then( groups => {
                 this.items = groups.map( group => { return this.groupToItem(group); } );
+                let taskCounts = {};
+                db.tasks.where('deleted').equals(0).toArray().then( tasks => {
+                    for (let i = 0; i < tasks.length; i++) {
+                        if (!taskCounts[tasks[i].groups_id]) {
+                            taskCounts[tasks[i].groups_id] = 0;
+                        }
+                        taskCounts[tasks[i].groups_id]++;
+                    }
+                    for (let i = 0; i < this.items.length; i++) {
+                        if (taskCounts[this.items[i].id]) {
+                            this.items[i].taskCount = taskCounts[this.items[i].id];
+                        }
+                    }
+                });
             }).catch( error => {
                 console.log(error);
             });
