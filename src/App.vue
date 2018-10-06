@@ -29,8 +29,9 @@
                                 </v-flex>
                             </v-list-tile-content>
                         </v-list-tile>
-                        <template v-for="(item, idx) in items">
+                        <draggable v-model="items" @start="dragStart" @end="dragEnd">
                             <v-list-tile
+                                v-for="(item, idx) in items"
                                 :key="idx"
                                 v-listtouch="item"
                                 class="blue" dark
@@ -49,7 +50,7 @@
                                     </v-flex>
                                 </v-list-tile-content>
                             </v-list-tile>
-                        </template>
+                        </draggable>
                     </v-list>
                     <v-list v-else id="settings" class="blue-grey" dark style="padding:0">
                         <v-list-tile style="margin-top:-48px">
@@ -85,6 +86,7 @@
 /* eslint-disable no-console */
 
 import db from './db';
+import draggable from 'vuedraggable';
 
 export default {
     name: 'App',
@@ -96,7 +98,11 @@ export default {
             newValue: '',
             selectedGroupId: null,
             showSettings: false,
+            touchEventCancel: false,
         }
+    },
+    components: {
+        draggable,
     },
     mounted () {
         this.fetchGroups();
@@ -171,6 +177,8 @@ export default {
                 };
                 let thresholdWidth = 50;
                 el.addEventListener('touchstart', event => {
+                    if (vnode.context.touchEventCancel) return;
+
                     if (event.targetTouches.length == 1) {
                         let touch = event.targetTouches[0];
                         touchPosition.startX = touch.pageX;
@@ -178,6 +186,8 @@ export default {
                     }
                 });
                 el.addEventListener('touchmove', event => {
+                    if (vnode.context.touchEventCancel) return;
+
                     if (event.targetTouches.length == 1) {
                         let touch = event.targetTouches[0];
                         touchPosition.currentX = touch.pageX;
@@ -201,6 +211,8 @@ export default {
                     }
                 });
                 el.addEventListener('touchend', () => {
+                    if (vnode.context.touchEventCancel) return;
+
                     // Move page or
                     // Display new item input
                     if (!touchPosition.startX || !touchPosition.startY || !touchPosition.currentX || !touchPosition.currentY) {
@@ -436,9 +448,13 @@ export default {
         },
         removeItem (item) {
             if (!this.showGroups && this.selectedGroupId) {
-                this.removeTask(item);
+                if (window.confirm('Remove task OK?')) {
+                    this.removeTask(item);
+                }
             } else {
-                this.removeGroup(item);
+                if (window.confirm('Remove group OK?')) {
+                    this.removeGroup(item);
+                }
             }
         },
         windowTouchEndEvent (paddingTop) {
@@ -477,6 +493,78 @@ export default {
                 console.log(error);
                 alert('Error');
             });
+        },
+        sortGroup (oldSort, newSort) {
+            db.transaction('rw', db.groups, () => {
+                db.groups.where({ deleted: 0, sort: oldSort }).first( group => {
+                    db.groups.update(group.id, { sort: newSort });
+                    if (oldSort < newSort) {
+                        db.groups.where({ deleted: 0 }).filter( grp => {
+                            return group.id != grp.id;
+                        }).filter( grp => {
+                            return oldSort < grp.sort && grp.sort <= newSort;
+                        }).each( grp => {
+                            db.groups.update(grp.id, { sort: grp.sort - 1 });
+                        });
+                    } else {
+                        db.groups.where({ deleted: 0 }).filter( grp => {
+                            return group.id != grp.id;
+                        }).filter( grp => {
+                            return oldSort > grp.sort && grp.sort >= newSort;
+                        }).each( grp => {
+                            db.groups.update(grp.id, { sort: grp.sort + 1 });
+                        });
+                    }
+                });
+            }).then( () => {
+                this.fetchGroups();
+            }).catch( error => {
+                console.log(error);
+            });
+        },
+        sortTask (oldSort, newSort) {
+            db.transaction('rw', db.tasks, () => {
+                db.tasks.where({ deleted: 0, sort: oldSort, groups_id: this.selectedGroupId }).first( task => {
+                    db.tasks.update(task.id, { sort: newSort });
+                    if (oldSort < newSort) {
+                        db.tasks.where({ deleted: 0, groups_id: this.selectedGroupId }).filter( tsk => {
+                            return task.id != tsk.id;
+                        }).filter( tsk => {
+                            return oldSort < tsk.sort && tsk.sort <= newSort;
+                        }).each( tsk => {
+                            db.tasks.update(tsk.id, { sort: tsk.sort - 1 });
+                        });
+                    } else {
+                        db.tasks.where({ deleted: 0, groups_id: this.selectedGroupId }).filter( tsk => {
+                            return task.id != tsk.id;
+                        }).filter( tsk => {
+                            return oldSort > tsk.sort && tsk.sort >= newSort;
+                        }).each( tsk => {
+                            db.tasks.update(tsk.id, { sort: tsk.sort + 1 });
+                        });
+                    }
+                });
+            }).then( () => {
+                this.fetchTasks(this.selectedGroupId);
+            }).catch( error => {
+                console.log(error);
+            });
+        },
+        sort (oldIndex, newIndex) {
+            if (oldIndex == newIndex) return;
+
+            if (!this.showGroups && this.selectedGroupId) {
+                this.sortTask(this.items.length - oldIndex, this.items.length - newIndex);
+            } else {
+                this.sortGroup(this.items.length - oldIndex, this.items.length - newIndex);
+            }
+        },
+        dragStart () {
+            this.touchEventCancel = true;
+        },
+        dragEnd (event) {
+            this.sort(event.oldIndex, event.newIndex);
+            this.touchEventCancel = false;
         },
     }
 }
